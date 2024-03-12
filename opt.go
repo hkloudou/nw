@@ -33,7 +33,7 @@ func WithSite(site string) NwOption {
 	}
 }
 
-func WithDataKeys(keys []string) NwOption {
+func WithDataKeys(keys ...string) NwOption {
 	return func(o *nwOption) {
 		o.dataKeys = keys
 	}
