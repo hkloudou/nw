@@ -8,6 +8,8 @@ import (
 
 type nwOption struct {
 	dataKeys   []string
+	codeKeys   []string
+	msgKeys    []string
 	site       string
 	client     *http.Client
 	postReader io.Reader
@@ -40,6 +42,18 @@ func WithSite(site string) NwOption {
 	}
 }
 
+func WithCodeKeys(keys ...string) NwOption {
+	return func(o *nwOption) {
+		o.codeKeys = keys
+	}
+}
+
+func WithMsgKeys(keys ...string) NwOption {
+	return func(o *nwOption) {
+		o.msgKeys = keys
+	}
+}
+
 func WithDataKeys(keys ...string) NwOption {
 	return func(o *nwOption) {
 		o.dataKeys = keys
@@ -48,6 +62,8 @@ func WithDataKeys(keys ...string) NwOption {
 
 func getOption(opts ...NwOption) *nwOption {
 	var o = &nwOption{
+		codeKeys: []string{"c", "Code", "errcode"},
+		msgKeys:  []string{"m", "Msg", "Message", "errmsg"},
 		dataKeys: []string{"d", "Data", "data", ""},
 	}
 	for _, opt := range opts {

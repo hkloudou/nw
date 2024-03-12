@@ -82,22 +82,23 @@ func returnStream[T any](stream io.ReadCloser, o *nwOption) (*T, error) {
 		}
 		panic("")
 	}
-	if sg("c", "Code").Int() != 0 {
-		if len(sg("m", "Msg", "Message").String()) > 0 {
-			return nil, fmt.Errorf(sg("m", "Msg", "Message").String())
+	if sg(o.codeKeys...).Int() != 0 {
+		msg := sg(o.msgKeys...).String()
+		if len(msg) > 0 {
+			return nil, fmt.Errorf(msg)
 		}
 		return nil, fmt.Errorf("error fmt")
 	}
-
+	var dataRaw = sg(o.dataKeys...).Raw
 	var obj T
 	if reflect.TypeOf(obj).String() == "gjson.Result" {
-		if result, ok := interface{}(gjson.Parse(sg(o.dataKeys...).Raw)).(T); ok {
+		if result, ok := interface{}(gjson.Parse(dataRaw)).(T); ok {
 			return &result, nil
 		}
 		return nil, fmt.Errorf("err fmt")
 	}
 
-	err = json.Unmarshal([]byte(sg(o.dataKeys...).Raw), &obj)
+	err = json.Unmarshal([]byte(dataRaw), &obj)
 	if err != nil {
 		return nil, err
 	}
