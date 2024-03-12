@@ -61,6 +61,9 @@ func returnStream[T any](stream io.ReadCloser, o *nwOption) (*T, error) {
 	if err != nil {
 		return nil, err
 	}
+	if o.log {
+		fmt.Println("resposne", o.site, string(body))
+	}
 	g := gjson.ParseBytes(body)
 	sg := func(keys ...string) gjson.Result {
 		for i := 0; i < len(keys); i++ {

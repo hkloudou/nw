@@ -11,6 +11,7 @@ type nwOption struct {
 	site       string
 	client     *http.Client
 	postReader io.Reader
+	log        bool
 }
 
 type NwOption func(*nwOption)
@@ -18,6 +19,12 @@ type NwOption func(*nwOption)
 func WithClient(client *http.Client) NwOption {
 	return func(o *nwOption) {
 		o.client = client
+	}
+}
+
+func WithLog(uselog bool) NwOption {
+	return func(o *nwOption) {
+		o.log = uselog
 	}
 }
 
