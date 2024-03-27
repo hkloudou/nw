@@ -62,8 +62,8 @@ func WithDataKeys(keys ...string) NwOption {
 
 func getOption(opts ...NwOption) *nwOption {
 	var o = &nwOption{
-		codeKeys: []string{"c", "Code", "errcode"},
-		msgKeys:  []string{"m", "Msg", "Message", "errmsg"},
+		codeKeys: []string{"c", "Code", "code", "errcode"},
+		msgKeys:  []string{"m", "Msg", "msg", "Message", "message", "errmsg"},
 		dataKeys: []string{"d", "Data", "data", ""},
 	}
 	for _, opt := range opts {
