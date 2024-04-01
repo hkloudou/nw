@@ -12,13 +12,14 @@ import (
 )
 
 func PostJsonSteam[T any](opts ...NwOption) (*T, error) {
-	o := getOption(opts...)
+	o := getDefaultOption(opts...)
 
 	req, err := http.NewRequest("POST", o.site, o.postReader)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+
+	fill(o, req)
 	resp, err := o.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -37,12 +38,20 @@ func PostJsonData[T any](data interface{}, opts ...NwOption) (*T, error) {
 	return PostJsonSteam[T](opts...)
 }
 
+func fill(o *nwOption, req *http.Request) {
+	req.Header.Set("Content-Type", "application/json")
+	if o.header != nil {
+		req.Header = o.header
+	}
+}
+
 func GetJsonData[T any](opts ...NwOption) (*T, error) {
-	o := getOption(opts...)
+	o := getDefaultOption(opts...)
 	req, err := http.NewRequest("GET", o.site, nil)
 	if err != nil {
 		return nil, err
 	}
+	fill(o, req)
 
 	resp, err := o.client.Do(req)
 	if err != nil {

@@ -12,6 +12,7 @@ type nwOption struct {
 	msgKeys    []string
 	site       string
 	client     *http.Client
+	header     map[string][]string
 	postReader io.Reader
 	log        bool
 }
@@ -33,6 +34,12 @@ func WithLog(uselog bool) NwOption {
 func WithPostData(reader io.Reader) NwOption {
 	return func(o *nwOption) {
 		o.postReader = reader
+	}
+}
+
+func WithHead(header map[string][]string) NwOption {
+	return func(o *nwOption) {
+		o.header = header
 	}
 }
 
@@ -60,7 +67,7 @@ func WithDataKeys(keys ...string) NwOption {
 	}
 }
 
-func getOption(opts ...NwOption) *nwOption {
+func getDefaultOption(opts ...NwOption) *nwOption {
 	var o = &nwOption{
 		codeKeys: []string{"c", "Code", "code", "errcode"},
 		msgKeys:  []string{"m", "Msg", "msg", "Message", "message", "errmsg"},
