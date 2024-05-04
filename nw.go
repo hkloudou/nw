@@ -107,6 +107,10 @@ func returnStream[T any](stream io.ReadCloser, o *nwOption) (*T, error) {
 		return nil, fmt.Errorf("err fmt")
 	}
 
+	if reflect.TypeOf(obj).Kind() == reflect.Slice {
+		reflect.ValueOf(&obj).Elem().Set(reflect.MakeSlice(reflect.TypeOf(obj), 0, 0))
+	}
+
 	err = json.Unmarshal([]byte(dataRaw), &obj)
 	if err != nil {
 		return nil, err
