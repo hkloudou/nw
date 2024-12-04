@@ -11,28 +11,40 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func PostJsonSteam[T any](opts ...NwOption) (*T, error) {
+func PostJsonSteam[T any](opts ...NwOption) *res[T] {
 	o := getDefaultOption(opts...)
 
 	req, err := http.NewRequest("POST", o.site, o.postReader)
 	if err != nil {
-		return nil, err
+		return &res[T]{
+			Code: 400,
+			Msg:  err.Error(),
+			Data: nil,
+		}
 	}
 
 	fill(o, req)
 	resp, err := o.client.Do(req)
 	if err != nil {
-		return nil, err
+		return &res[T]{
+			Code: 400,
+			Msg:  err.Error(),
+			Data: nil,
+		}
 	}
 	defer resp.Body.Close()
 
 	return returnStream[T](resp.Body, o)
 }
 
-func PostJsonData[T any](data interface{}, opts ...NwOption) (*T, error) {
+func PostJsonData[T any](data interface{}, opts ...NwOption) *res[T] {
 	b, err := json.Marshal(data)
 	if err != nil {
-		return nil, err
+		return &res[T]{
+			Code: 400,
+			Msg:  err.Error(),
+			Data: nil,
+		}
 	}
 	opts = append(opts, WithPostData(bytes.NewReader(b)))
 	return PostJsonSteam[T](opts...)
@@ -49,17 +61,31 @@ func fill(o *nwOption, req *http.Request) {
 	}
 }
 
-func GetJsonData[T any](opts ...NwOption) (*T, error) {
+type res[T any] struct {
+	Code int
+	Msg  string
+	Data *T
+}
+
+func GetJsonData[T any](opts ...NwOption) *res[T] {
 	o := getDefaultOption(opts...)
 	req, err := http.NewRequest("GET", o.site, nil)
 	if err != nil {
-		return nil, err
+		return &res[T]{
+			Code: 400,
+			Msg:  err.Error(),
+			Data: nil,
+		}
 	}
 	fill(o, req)
 
 	resp, err := o.client.Do(req)
 	if err != nil {
-		return nil, err
+		return &res[T]{
+			Code: 400,
+			Msg:  err.Error(),
+			Data: nil,
+		}
 	}
 	defer resp.Body.Close()
 
@@ -68,15 +94,24 @@ func GetJsonData[T any](opts ...NwOption) (*T, error) {
 	}
 
 	if resp != nil && resp.StatusCode != 200 {
-		return nil, fmt.Errorf("err response code:%d", resp.StatusCode)
+		return &res[T]{
+			Code: 400,
+			Msg:  fmt.Sprintf("err response code:%d", resp.StatusCode),
+			Data: nil,
+		}
+		// return nil, fmt.Errorf("err response code:%d", resp.StatusCode)
 	}
 	return returnStream[T](resp.Body, o)
 }
 
-func returnStream[T any](stream io.ReadCloser, o *nwOption) (*T, error) {
+func returnStream[T any](stream io.ReadCloser, o *nwOption) *res[T] {
 	body, err := io.ReadAll(stream)
 	if err != nil {
-		return nil, err
+		return &res[T]{
+			Code: 400,
+			Msg:  err.Error(),
+			Data: nil,
+		}
 	}
 	if o.log {
 		fmt.Println("resposne", o.site, string(body))
@@ -100,20 +135,32 @@ func returnStream[T any](stream io.ReadCloser, o *nwOption) (*T, error) {
 		}
 		panic("")
 	}
-	if sg(o.codeKeys...).Int() != 0 {
-		msg := sg(o.msgKeys...).String()
-		if len(msg) > 0 {
-			return nil, fmt.Errorf(msg)
-		}
-		return nil, fmt.Errorf("error fmt")
-	}
+	// if sg(o.codeKeys...).Int() != 0 {
+	// 	msg := sg(o.msgKeys...).String()
+	// 	if len(msg) > 0 {
+	// 		return nil, fmt.Errorf(msg)
+	// 	}
+	// 	return nil, fmt.Errorf("error fmt")
+	// }
+
+	code := sg(o.codeKeys...).Int()
+	msg := sg(o.msgKeys...).String()
+
 	var dataRaw = sg(o.dataKeys...).Raw
 	var obj T
 	if reflect.TypeOf(obj).String() == "gjson.Result" {
 		if result, ok := interface{}(gjson.Parse(dataRaw)).(T); ok {
-			return &result, nil
+			return &res[T]{
+				Code: int(code),
+				Msg:  msg,
+				Data: &result,
+			}
 		}
-		return nil, fmt.Errorf("err fmt")
+		return &res[T]{
+			Code: 500,
+			Msg:  "error fmt",
+			Data: nil,
+		}
 	}
 
 	if reflect.TypeOf(obj).Kind() == reflect.Slice {
@@ -122,7 +169,15 @@ func returnStream[T any](stream io.ReadCloser, o *nwOption) (*T, error) {
 
 	err = json.Unmarshal([]byte(dataRaw), &obj)
 	if err != nil {
-		return nil, err
+		return &res[T]{
+			Code: 500,
+			Msg:  "error fmt",
+			Data: nil,
+		}
 	}
-	return &obj, nil
+	return &res[T]{
+		Code: int(code),
+		Msg:  msg,
+		Data: &obj,
+	}
 }

@@ -4,12 +4,17 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/tidwall/gjson"
 )
 
 type nwOption struct {
-	dataKeys   []string
-	codeKeys   []string
-	msgKeys    []string
+	dataKeys []string
+	codeKeys []string
+	msgKeys  []string
+
+	successCodeValidate func(res gjson.Result) bool
+
 	site       string
 	client     *http.Client
 	header     map[string][]string
@@ -74,8 +79,19 @@ func WithMiddlewave(mid *middlewaves) NwOption {
 	}
 }
 
+func WithSuccessCheck(fc func(res gjson.Result) bool) NwOption {
+	return func(o *nwOption) {
+		o.successCodeValidate = fc
+	}
+}
+
 func getDefaultOption(opts ...NwOption) *nwOption {
 	var o = &nwOption{
+
+		successCodeValidate: func(res gjson.Result) bool {
+			return res.Int() == 0
+		},
+
 		codeKeys: []string{"c", "Code", "code", "errcode"},
 		msgKeys:  []string{"m", "Msg", "msg", "Message", "message", "errmsg"},
 		dataKeys: []string{"d", "Data", "data", ""},
