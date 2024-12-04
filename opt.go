@@ -15,6 +15,7 @@ type nwOption struct {
 	header     map[string][]string
 	postReader io.Reader
 	log        bool
+	mid        *middlewaves
 }
 
 type NwOption func(*nwOption)
@@ -64,6 +65,12 @@ func WithMsgKeys(keys ...string) NwOption {
 func WithDataKeys(keys ...string) NwOption {
 	return func(o *nwOption) {
 		o.dataKeys = keys
+	}
+}
+
+func WithMiddlewave(mid *middlewaves) NwOption {
+	return func(o *nwOption) {
+		o.mid = mid
 	}
 }
 

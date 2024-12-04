@@ -43,6 +43,10 @@ func fill(o *nwOption, req *http.Request) {
 	if o.header != nil {
 		req.Header = o.header
 	}
+
+	for i := 0; i < len(o.mid.reqs); i++ {
+		o.mid.reqs[i](req)
+	}
 }
 
 func GetJsonData[T any](opts ...NwOption) (*T, error) {
@@ -59,6 +63,10 @@ func GetJsonData[T any](opts ...NwOption) (*T, error) {
 	}
 	defer resp.Body.Close()
 
+	for i := 0; i < len(o.mid.ress); i++ {
+		o.mid.ress[i](resp)
+	}
+
 	if resp != nil && resp.StatusCode != 200 {
 		return nil, fmt.Errorf("err response code:%d", resp.StatusCode)
 	}
@@ -73,6 +81,7 @@ func returnStream[T any](stream io.ReadCloser, o *nwOption) (*T, error) {
 	if o.log {
 		fmt.Println("resposne", o.site, string(body))
 	}
+
 	g := gjson.ParseBytes(body)
 	sg := func(keys ...string) gjson.Result {
 		for i := 0; i < len(keys); i++ {
