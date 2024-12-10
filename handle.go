@@ -7,6 +7,9 @@ import (
 )
 
 func handleRequest[T any](site string, o *nwOption, request *http.Request, mw *middlewaves[T]) *Result[T] {
+	if o.log {
+		fmt.Printf("\u001b[44m\u001b[37m%s \u001b[0m %s\n", request.Method, site)
+	}
 	// 应用请求中间件
 	for _, handler := range mw.reqHandlers {
 		handler(request)
@@ -28,6 +31,10 @@ func handleRequest[T any](site string, o *nwOption, request *http.Request, mw *m
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return WrapParseError[T](err)
+	}
+	site = response.Request.URL.String()
+	if o.log {
+		fmt.Println("\u001b[42m\u001b[37m ↓ \u001b[0m ", site, "\n", string(body))
 	}
 
 	// 解码响应体
