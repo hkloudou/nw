@@ -1,8 +1,8 @@
 package nw
 
 import (
-	"fmt"
-	"io"
+	"bytes"
+	"encoding/json"
 	"net/http"
 )
 
@@ -13,38 +13,21 @@ func Get[T any](site string, mw *middlewaves[T], opts ...NwOption) *Result[T] {
 		return WrapNetworkError[T](err)
 	}
 
-	// 应用请求中间件
-	for _, handler := range mw.reqHandlers {
-		handler(request)
-	}
+	return handleRequest(site, o, request, mw)
+}
 
-	// 执行请求
-	response, err := o.client.Do(request)
-	if err != nil {
-		return WrapNetworkError[T](err)
-	}
-	defer response.Body.Close()
-
-	// 检查 HTTP 状态码
-	if response.StatusCode != http.StatusOK {
-		return WrapApiError[T](response.StatusCode, fmt.Sprintf("unexpected status code: %d", response.StatusCode))
-	}
-
-	// 读取响应体
-	body, err := io.ReadAll(response.Body)
+func PostJson[T any](site string, reqestData any, mw *middlewaves[T], opts ...NwOption) *Result[T] {
+	b, err := json.Marshal(reqestData)
 	if err != nil {
 		return WrapParseError[T](err)
 	}
-
-	// 解码响应体
-	result := mw.decodeHandler(body)
-
-	// 应用响应中间件
-	for _, handler := range mw.resHandlers {
-		handler(result)
+	o := getDefaultOption(opts...)
+	request, err := http.NewRequest("POST", site, bytes.NewReader(b))
+	if err != nil {
+		return WrapNetworkError[T](err)
 	}
 
-	return result
+	return handleRequest(site, o, request, mw)
 }
 
 // type NwClient struct {
