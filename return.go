@@ -15,6 +15,21 @@ func (r *Result[T]) IsError() bool {
 	return r.err != nil
 }
 
+func (r *Result[T]) IsNetworkError() bool {
+	_, ok := r.err.(*NetworkError)
+	return ok
+}
+
+func (r *Result[T]) IsParseError() bool {
+	_, ok := r.err.(*ParseError)
+	return ok
+}
+
+func (r *Result[T]) IsApiError() bool {
+	_, ok := r.err.(*ApiError)
+	return ok
+}
+
 // GetData 获取数据，如果存在错误则返回 nil
 func (r *Result[T]) GetData() *T {
 	if r.IsError() {
@@ -29,13 +44,13 @@ func (r *Result[T]) GetError() error {
 }
 
 // Then 方法调用外部的泛型函数实现链式调用
-func (r *Result[T]) Then(fn func(data *T) *Result[any]) *Result[any] {
-	if r.IsError() || r.Data == nil {
-		// 如果有错误，直接将错误传递给新的 Result
-		return &Result[any]{err: r.err}
-	}
-	return fn(r.Data)
-}
+// func (r *Result[T]) Then(fn func(data *T) *Result[any]) *Result[any] {
+// 	if r.IsError() || r.Data == nil {
+// 		// 如果有错误，直接将错误传递给新的 Result
+// 		return &Result[any]{err: r.err}
+// 	}
+// 	return fn(r.Data)
+// }
 
 // Catch 错误捕获处理
 func (r *Result[T]) Catch(fn func(err error)) *Result[T] {
@@ -111,3 +126,11 @@ func WrapData[T any](data *T) *Result[T] {
 // 	}
 // 	return fn(r.Data) // 成功时调用传入的处理函数
 // }
+
+// 顶层函数 Then
+func Then[T, U any](r *Result[T], fn func(data *T) *Result[U]) *Result[U] {
+	if r.IsError() {
+		return &Result[U]{err: r.err}
+	}
+	return fn(r.Data)
+}

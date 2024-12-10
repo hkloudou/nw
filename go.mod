@@ -1,6 +1,6 @@
 module github.com/hkloudou/nw/v2
 
-go 1.21.5
+go 1.23.3
 
 require (
 	github.com/tidwall/gjson v1.17.1 // indirect
