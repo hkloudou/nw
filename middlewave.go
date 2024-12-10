@@ -1,29 +1,41 @@
 package nw
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
-type middlewaves struct {
-	reqs []func(req *http.Request)
-	ress []func(res *http.Response)
+type middlewaves[T any] struct {
+	reqHandlers   []func(req *http.Request)
+	decodeHandler func(data []byte) *Result[T]
+	resHandlers   []func(res *Result[T])
 }
 
-func (m *middlewaves) UseRequest(cb func(req *http.Request)) {
-	if len(m.reqs) == 0 {
-		m.reqs = make([]func(req *http.Request), 0)
-	}
-	m.reqs = append(m.reqs, cb)
+// UseRequest 添加请求预处理器
+func (m *middlewaves[T]) UseRequest(cb func(req *http.Request)) *middlewaves[T] {
+	m.reqHandlers = append(m.reqHandlers, cb)
+	return m
 }
 
-func (m *middlewaves) UseReponse(cb func(res *http.Response)) {
-	if len(m.reqs) == 0 {
-		m.ress = make([]func(req *http.Response), 0)
-	}
-	m.ress = append(m.ress, cb)
+// UseDecode 设置解码器
+func (m *middlewaves[T]) UseDecode(fun func(data []byte) *Result[T]) *middlewaves[T] {
+	m.decodeHandler = fun
+	return m
 }
 
-func NewMiddlewaves() *middlewaves {
-	return &middlewaves{
-		reqs: make([]func(req *http.Request), 0),
-		ress: make([]func(res *http.Response), 0),
+// UseResponse 添加响应处理器
+func (m *middlewaves[T]) UseResponse(cb func(*Result[T])) *middlewaves[T] {
+	m.resHandlers = append(m.resHandlers, cb)
+	return m
+}
+
+// newMiddlewaves 创建新的 middlewaves 实例，仅包内可用
+func NewMiddlewaves[T any]() *middlewaves[T] {
+	return &middlewaves[T]{
+		reqHandlers: make([]func(req *http.Request), 0),
+		decodeHandler: func(data []byte) *Result[T] {
+			return WrapParseError[T](fmt.Errorf("no decode handler set"))
+		},
+		resHandlers: make([]func(res *Result[T]), 0),
 	}
 }
