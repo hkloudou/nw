@@ -29,6 +29,21 @@ func (m *middlewaves[T]) UseResponse(cb func(*Result[T])) *middlewaves[T] {
 	return m
 }
 
+func (m *middlewaves[T]) Copy() *middlewaves[T] {
+	ret := &middlewaves[T]{
+		reqHandlers: make([]func(req *http.Request), 0),
+		decodeHandler: func(data []byte) *Result[T] {
+			return WrapParseError[T](fmt.Errorf("no decode handler set"))
+		},
+		resHandlers: make([]func(res *Result[T]), 0),
+	}
+
+	ret.reqHandlers = append(ret.reqHandlers, m.reqHandlers...)
+	ret.resHandlers = append(ret.resHandlers, m.resHandlers...)
+	ret.decodeHandler = m.decodeHandler
+	return ret
+}
+
 // newMiddlewaves 创建新的 middlewaves 实例，仅包内可用
 func NewMiddlewaves[T any]() *middlewaves[T] {
 	return &middlewaves[T]{
