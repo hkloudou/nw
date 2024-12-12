@@ -1,5 +1,9 @@
 package nw
 
+// func X[T any](site string, fc func(response *http.Response) *Result[T]) {
+
+// }
+
 // func PostJsonSteam[T any](opts ...NwOption) *res[T] {
 // 	o := getDefaultOption(opts...)
 
