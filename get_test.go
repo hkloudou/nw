@@ -13,6 +13,7 @@ func TestMain() {
 		if err != nil {
 			return WrapParseError[string](err)
 		}
+
 		var obj string
 		err = json.Unmarshal(body, &obj)
 		if err != nil {
