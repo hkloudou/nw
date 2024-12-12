@@ -17,12 +17,16 @@ func Get[T any](site string, mw *Middlewaves[T], opts ...NwOption) *Result[T] {
 }
 
 func PostJson[T any](site string, reqestData any, mw *Middlewaves[T], opts ...NwOption) *Result[T] {
-	b, err := json.Marshal(reqestData)
-	if err != nil {
-		return WrapParseError[T](err)
-	}
-	if reqestData == nil {
+	var b []byte
+	switch tmp := reqestData.(type) {
+	case string:
+		b = []byte(tmp)
+	case *string:
+		b = []byte(*tmp)
+	case nil:
 		b = []byte("")
+	default:
+		b, _ = json.Marshal(tmp)
 	}
 	o := getDefaultOption(opts...)
 	request, err := http.NewRequest("POST", site, bytes.NewReader(b))
