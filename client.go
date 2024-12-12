@@ -25,6 +25,18 @@ func NewClient() *Client {
 	}
 }
 
+func NewFromData(localStorage map[string]string, jar *cookiejar.Jar) *Client {
+	return &Client{
+		_localStorage: localStorage,
+		cookieJar:     jar,
+		userAgent:     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+	}
+}
+
+func (m *Client) Storages() map[string]string {
+	return m._localStorage
+}
+
 func (m *Client) LocalStorageGet(key string) string {
 	result, found := m._localStorage[key]
 	if !found {
