@@ -6,27 +6,27 @@ import (
 
 // Result 泛型结构体，用于封装 API 响应结果
 type Result[T any] struct {
-	err  error // 所有错误统一存储
+	Err  error // 所有错误统一存储
 	Data *T    // 成功时的结果数据
 }
 
 // IsError 检查是否有错误
 func (r *Result[T]) IsError() bool {
-	return r.err != nil
+	return r.Err != nil
 }
 
 func (r *Result[T]) IsNetworkError() bool {
-	_, ok := r.err.(*NetworkError)
+	_, ok := r.Err.(*NetworkError)
 	return ok
 }
 
 func (r *Result[T]) IsParseError() bool {
-	_, ok := r.err.(*ParseError)
+	_, ok := r.Err.(*ParseError)
 	return ok
 }
 
 func (r *Result[T]) IsApiError() bool {
-	_, ok := r.err.(*ApiError)
+	_, ok := r.Err.(*ApiError)
 	return ok
 }
 
@@ -40,7 +40,7 @@ func (r *Result[T]) GetData() *T {
 
 // GetError 获取错误
 func (r *Result[T]) GetError() error {
-	return r.err
+	return r.Err
 }
 
 // Then 方法调用外部的泛型函数实现链式调用
@@ -55,7 +55,7 @@ func (r *Result[T]) GetError() error {
 // Catch 错误捕获处理
 func (r *Result[T]) Catch(fn func(err error)) *Result[T] {
 	if r.IsError() {
-		fn(r.err) // 调用错误处理函数
+		fn(r.Err) // 调用错误处理函数
 	}
 	return r // 返回当前 Result，以支持链式调用
 }
@@ -63,7 +63,7 @@ func (r *Result[T]) Catch(fn func(err error)) *Result[T] {
 // WrapResult 创建一个包含错误和数据的 Result
 func WrapResult[T any](data *T, err error) *Result[T] {
 	return &Result[T]{
-		err:  err,
+		Err:  err,
 		Data: data,
 	}
 }
@@ -130,7 +130,7 @@ func WrapData[T any](data *T) *Result[T] {
 // 顶层函数 Then
 func Then[T, U any](r *Result[T], fn func(data *T) *Result[U]) *Result[U] {
 	if r.IsError() {
-		return &Result[U]{err: r.err}
+		return &Result[U]{Err: r.Err}
 	}
 	return fn(r.Data)
 }
