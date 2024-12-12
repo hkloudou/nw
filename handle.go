@@ -2,7 +2,6 @@ package nw
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 )
 
@@ -28,17 +27,17 @@ func handleRequest[T any](site string, o *nwOption, request *http.Request, mw *M
 	}
 
 	// 读取响应体
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return WrapParseError[T](err)
-	}
-	site = response.Request.URL.String()
-	if o.log {
-		fmt.Println("\u001b[42m\u001b[37m ↓ \u001b[0m ", site, "\n", string(body))
-	}
+	// body, err := io.ReadAll(response.Body)
+	// if err != nil {
+	// 	return WrapParseError[T](err)
+	// }
+	// site = response.Request.URL.String()
+	// if o.log {
+	// 	fmt.Println("\u001b[42m\u001b[37m ↓ \u001b[0m ", site, "\n", string(body))
+	// }
 
 	// 解码响应体
-	result := mw.decodeHandler(body)
+	result := mw.decodeHandler(response)
 
 	// 应用响应中间件
 	for _, handler := range mw.resHandlers {

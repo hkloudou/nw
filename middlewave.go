@@ -7,7 +7,7 @@ import (
 
 type Middlewaves[T any] struct {
 	reqHandlers   []func(req *http.Request)
-	decodeHandler func(data []byte) *Result[T]
+	decodeHandler func(response *http.Response) *Result[T]
 	resHandlers   []func(res *Result[T])
 }
 
@@ -18,7 +18,7 @@ func (m *Middlewaves[T]) UseRequest(cb func(req *http.Request)) *Middlewaves[T] 
 }
 
 // UseDecode 设置解码器
-func (m *Middlewaves[T]) UseDecode(fun func(data []byte) *Result[T]) *Middlewaves[T] {
+func (m *Middlewaves[T]) UseDecode(fun func(response *http.Response) *Result[T]) *Middlewaves[T] {
 	m.decodeHandler = fun
 	return m
 }
@@ -32,7 +32,7 @@ func (m *Middlewaves[T]) UseResponse(cb func(*Result[T])) *Middlewaves[T] {
 func (m *Middlewaves[T]) Copy() *Middlewaves[T] {
 	ret := &Middlewaves[T]{
 		reqHandlers: make([]func(req *http.Request), 0),
-		decodeHandler: func(data []byte) *Result[T] {
+		decodeHandler: func(response *http.Response) *Result[T] {
 			return WrapParseError[T](fmt.Errorf("no decode handler set"))
 		},
 		resHandlers: make([]func(res *Result[T]), 0),
@@ -48,7 +48,7 @@ func (m *Middlewaves[T]) Copy() *Middlewaves[T] {
 func NewMiddlewaves[T any]() *Middlewaves[T] {
 	return &Middlewaves[T]{
 		reqHandlers: make([]func(req *http.Request), 0),
-		decodeHandler: func(data []byte) *Result[T] {
+		decodeHandler: func(response *http.Response) *Result[T] {
 			return WrapParseError[T](fmt.Errorf("no decode handler set"))
 		},
 		resHandlers: make([]func(res *Result[T]), 0),
