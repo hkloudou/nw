@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func Get[T any](site string, mw *middlewaves[T], opts ...NwOption) *Result[T] {
+func Get[T any](site string, mw *Middlewaves[T], opts ...NwOption) *Result[T] {
 	o := getDefaultOption(opts...)
 	request, err := http.NewRequest("GET", site, nil)
 	if err != nil {
@@ -16,7 +16,7 @@ func Get[T any](site string, mw *middlewaves[T], opts ...NwOption) *Result[T] {
 	return handleRequest(site, o, request, mw)
 }
 
-func PostJson[T any](site string, reqestData any, mw *middlewaves[T], opts ...NwOption) *Result[T] {
+func PostJson[T any](site string, reqestData any, mw *Middlewaves[T], opts ...NwOption) *Result[T] {
 	b, err := json.Marshal(reqestData)
 	if err != nil {
 		return WrapParseError[T](err)

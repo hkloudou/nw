@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func handleRequest[T any](site string, o *nwOption, request *http.Request, mw *middlewaves[T]) *Result[T] {
+func handleRequest[T any](site string, o *nwOption, request *http.Request, mw *Middlewaves[T]) *Result[T] {
 	if o.log {
 		fmt.Printf("\u001b[44m\u001b[37m%s \u001b[0m %s\n", request.Method, site)
 	}
@@ -42,6 +42,9 @@ func handleRequest[T any](site string, o *nwOption, request *http.Request, mw *m
 
 	// 应用响应中间件
 	for _, handler := range mw.resHandlers {
+		if result.IsError() {
+			return result
+		}
 		handler(result)
 	}
 
