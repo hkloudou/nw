@@ -228,6 +228,7 @@ func (j *Jar) cookies(u *url.URL, now time.Time) (cookies []*http.Cookie) {
 //
 // It does nothing if the URL's scheme is not HTTP or HTTPS.
 func (j *Jar) SetCookies(u *url.URL, cookies []*http.Cookie) {
+	// fmt.Println(fmt.Sprintf("\x1b[33m%s\x1b[0m", "COO"), u.String(), cookies)
 	j.setCookies(u, cookies, time.Now())
 }
 
