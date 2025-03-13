@@ -22,9 +22,16 @@ func handleRequest[T any](site string, o *nwOption, request *http.Request, mw *M
 	defer response.Body.Close()
 
 	// 检查 HTTP 状态码
-	if response.StatusCode != http.StatusOK {
+	// o.codes
+	// if !o.codes[response.StatusCode] {
+	// 	return WrapApiError[T](response.StatusCode, fmt.Sprintf("unexpected status code: %d", response.StatusCode))
+	// }
+	if _, ok := o.codes[response.StatusCode]; !ok {
 		return WrapApiError[T](response.StatusCode, fmt.Sprintf("unexpected status code: %d", response.StatusCode))
 	}
+	// if response.StatusCode != http.StatusOK {
+	// 	return WrapApiError[T](response.StatusCode, fmt.Sprintf("unexpected status code: %d", response.StatusCode))
+	// }
 
 	// 读取响应体
 	// body, err := io.ReadAll(response.Body)

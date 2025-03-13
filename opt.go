@@ -16,7 +16,8 @@ type nwOption struct {
 	client *http.Client
 	// header     map[string][]string
 	// postReader io.Reader
-	log bool
+	log   bool
+	codes map[int]bool
 	// mid        *middlewaves[T]
 }
 
@@ -31,6 +32,16 @@ func WithClient(client *http.Client) NwOption {
 func WithLog(uselog bool) NwOption {
 	return func(o *nwOption) {
 		o.log = uselog
+	}
+}
+
+func WithCodes(codes []int) NwOption {
+	return func(o *nwOption) {
+		o.codes = make(map[int]bool)
+		for _, v := range codes {
+			o.codes[v] = true
+		}
+
 	}
 }
 
@@ -92,6 +103,7 @@ func getDefaultOption(opts ...NwOption) *nwOption {
 		// codeKeys: []string{"c", "Code", "code", "errcode"},
 		// msgKeys:  []string{"m", "Msg", "msg", "Message", "message", "errmsg"},
 		// dataKeys: []string{"d", "Data", "data", ""},
+		codes: map[int]bool{200: true},
 	}
 	for _, opt := range opts {
 		opt(o)
@@ -101,5 +113,6 @@ func getDefaultOption(opts ...NwOption) *nwOption {
 			Timeout: 60 * time.Second,
 		}
 	}
+
 	return o
 }
