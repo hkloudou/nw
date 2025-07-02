@@ -141,6 +141,14 @@ func returnStream[T any](stream io.ReadCloser, o *nwOption) *res[T] {
 	code := sg(o.codeKeys...).Int()
 	msg := sg(o.msgKeys...).String()
 
+	if code != 0 {
+		return &res[T]{
+			Code: int(code),
+			Msg:  msg,
+			Data: nil,
+		}
+	}
+
 	var dataRaw = sg(o.dataKeys...).Raw
 	var obj T
 	if reflect.TypeOf(obj).String() == "gjson.Result" {
