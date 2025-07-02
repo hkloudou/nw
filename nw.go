@@ -13,6 +13,9 @@ import (
 
 func PostJsonSteam[T any](opts ...NwOption) *res[T] {
 	o := getDefaultOption(opts...)
+	if o.mid == nil {
+		o.mid = NewMiddlewaves()
+	}
 
 	req, err := http.NewRequest("POST", o.site, o.postReader)
 	if err != nil {
@@ -37,16 +40,8 @@ func PostJsonSteam[T any](opts ...NwOption) *res[T] {
 	return returnStream[T](resp.Body, o)
 }
 
-func PostJsonData[T any](data interface{}, opts ...NwOption) *res[T] {
-	b, err := json.Marshal(data)
-	if err != nil {
-		return &res[T]{
-			Code: 400,
-			Msg:  err.Error(),
-			Data: nil,
-		}
-	}
-	opts = append(opts, WithPostData(bytes.NewReader(b)))
+func PostJsonData[T any](data any, opts ...NwOption) *res[T] {
+	opts = append(opts, WithPostData(bytes.NewReader(covertRequestData(data))))
 	return PostJsonSteam[T](opts...)
 }
 
