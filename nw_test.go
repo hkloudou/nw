@@ -3,6 +3,7 @@ package nw
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -224,5 +225,26 @@ func TestStream(t *testing.T) {
 	}
 	if n != 3 {
 		t.Fatalf("want 3 lines, got %d", n)
+	}
+}
+
+func TestProxyKeepsTransportSettings(t *testing.T) {
+	c := New()
+	c.HTTP.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	if err := c.Proxy("http://127.0.0.1:1"); err != nil {
+		t.Fatal(err)
+	}
+	tr := c.HTTP.Transport.(*http.Transport)
+	if !tr.TLSClientConfig.InsecureSkipVerify {
+		t.Fatal("Proxy dropped the existing TLS config")
+	}
+	if u, _ := tr.Proxy(&http.Request{URL: &url.URL{Scheme: "https", Host: "example.com"}}); u == nil || u.Host != "127.0.0.1:1" {
+		t.Fatalf("proxy not applied: %v", u)
+	}
+	if err := c.Proxy(""); err != nil {
+		t.Fatal(err)
+	}
+	if c.HTTP.Transport.(*http.Transport).Proxy == nil {
+		t.Fatal("Proxy(\"\") should fall back to the environment proxy")
 	}
 }
