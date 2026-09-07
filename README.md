@@ -37,6 +37,10 @@ resp, err := c.Send(ctx, http.MethodPut, url, bytes.NewReader(data))
 
 // 自己构造 *http.Request
 resp, err := c.Do(req)
+
+// 流式：不读 body，直接拿 *http.Response（SSE、大文件下载）
+raw, err := c.Stream(req)
+defer raw.Body.Close()
 ```
 
 `Response` 内嵌 `*http.Response`（`StatusCode`、`Header`、`Cookies()`……），body 已完整读入：

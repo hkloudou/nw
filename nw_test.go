@@ -1,6 +1,7 @@
 package nw
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -196,5 +197,32 @@ func TestJarReplaceAndQuoted(t *testing.T) {
 	got := j.Cookies(u)
 	if len(got) != 1 || got[0].Value != "b c" || !got[0].Quoted {
 		t.Fatalf("host-only and domain cookie with the same name must replace each other and keep Quoted: %+v", got)
+	}
+}
+
+func TestStream(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Echo", r.Header.Get("X-Token"))
+		for i := 0; i < 3; i++ {
+			w.Write([]byte("chunk\n"))
+			w.(http.Flusher).Flush()
+		}
+	}))
+	defer srv.Close()
+
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+	resp, err := New().Use(Header("X-Token", "t")).Stream(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.Header.Get("X-Echo") != "t" {
+		t.Fatal("client options not applied")
+	}
+	n := 0
+	for sc := bufio.NewScanner(resp.Body); sc.Scan(); n++ {
+	}
+	if n != 3 {
+		t.Fatalf("want 3 lines, got %d", n)
 	}
 }

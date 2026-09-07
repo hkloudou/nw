@@ -111,19 +111,26 @@ func (c *Client) Send(ctx context.Context, method, rawURL string, body io.Reader
 	return c.Do(req, opts...)
 }
 
-// Do applies the Options, sends req and reads the whole body.
-//
-// A transport failure returns (nil, err). A status >= 400 returns the
-// Response together with a *StatusError, so the body is still inspectable.
-func (c *Client) Do(req *http.Request, opts ...Option) (*Response, error) {
+// Stream applies the Options and sends req, returning the raw response
+// with its body unread. The caller must close resp.Body. Use it for SSE,
+// large downloads or anything that should not be buffered.
+func (c *Client) Stream(req *http.Request, opts ...Option) (*http.Response, error) {
 	for _, o := range c.opts {
 		o(req)
 	}
 	for _, o := range opts {
 		o(req)
 	}
+	return c.HTTP.Do(req)
+}
+
+// Do is Stream followed by reading the whole body.
+//
+// A transport failure returns (nil, err). A status >= 400 returns the
+// Response together with a *StatusError, so the body is still inspectable.
+func (c *Client) Do(req *http.Request, opts ...Option) (*Response, error) {
 	start := time.Now()
-	r, err := c.HTTP.Do(req)
+	r, err := c.Stream(req, opts...)
 	if err != nil {
 		return nil, err
 	}
