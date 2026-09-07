@@ -1,9 +1,3 @@
-module github.com/hkloudou/nw/v2
+module github.com/hkloudou/nw/v3
 
-go 1.23.3
-
-require (
-	github.com/tidwall/gjson v1.17.1 // indirect
-	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.0 // indirect
-)
+go 1.23
