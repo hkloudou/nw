@@ -39,6 +39,7 @@ resp, err := c.Send(ctx, http.MethodPut, url, bytes.NewReader(data))
 resp, err := c.Do(req)
 
 // 流式：不读 body，直接拿 *http.Response（SSE、大文件下载）
+// 注意 c.HTTP.Timeout 覆盖整个往返（含读 body），长连接请设为 0，改用 ctx 控制
 raw, err := c.Stream(req)
 defer raw.Body.Close()
 ```

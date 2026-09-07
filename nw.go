@@ -58,9 +58,15 @@ func (c *Client) Use(opts ...Option) *Client {
 }
 
 // Proxy routes all traffic through proxyURL. An empty string restores the
-// default behaviour (HTTP_PROXY / HTTPS_PROXY from the environment).
+// default behaviour (HTTP_PROXY / HTTPS_PROXY from the environment). Other
+// settings on an existing *http.Transport are preserved.
 func (c *Client) Proxy(proxyURL string) error {
-	t := http.DefaultTransport.(*http.Transport).Clone()
+	t, ok := c.HTTP.Transport.(*http.Transport)
+	if !ok {
+		t = http.DefaultTransport.(*http.Transport)
+	}
+	t = t.Clone()
+	t.Proxy = http.ProxyFromEnvironment
 	if proxyURL != "" {
 		u, err := url.Parse(proxyURL)
 		if err != nil {
@@ -114,6 +120,9 @@ func (c *Client) Send(ctx context.Context, method, rawURL string, body io.Reader
 // Stream applies the Options and sends req, returning the raw response
 // with its body unread. The caller must close resp.Body. Use it for SSE,
 // large downloads or anything that should not be buffered.
+//
+// c.HTTP.Timeout (60s from New) bounds the whole exchange including reading
+// the body; for long-lived streams set it to 0 and cancel through ctx instead.
 func (c *Client) Stream(req *http.Request, opts ...Option) (*http.Response, error) {
 	for _, o := range c.opts {
 		o(req)
@@ -140,7 +149,7 @@ func (c *Client) Do(req *http.Request, opts ...Option) (*Response, error) {
 		return nil, err
 	}
 	if c.Debug {
-		log.Printf("nw: %s %s -> %d (%s)\n%s", req.Method, req.URL, r.StatusCode, time.Since(start).Round(time.Millisecond), body)
+		log.Printf("nw: %s %s -> %d (%s)\n%s", req.Method, r.Request.URL, r.StatusCode, time.Since(start).Round(time.Millisecond), body)
 	}
 	resp := &Response{Response: r, Body: body}
 	if r.StatusCode >= 400 {
