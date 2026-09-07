@@ -187,3 +187,14 @@ func TestJarJSON(t *testing.T) {
 		t.Fatalf("round trip failed: %s %v", b, err)
 	}
 }
+
+func TestJarReplaceAndQuoted(t *testing.T) {
+	var j Jar
+	u, _ := url.Parse("https://example.com/")
+	j.SetCookies(u, []*http.Cookie{{Name: "sid", Value: "a", Path: "/"}})
+	j.SetCookies(u, []*http.Cookie{{Name: "sid", Value: "b c", Path: "/", Domain: "example.com", Quoted: true}})
+	got := j.Cookies(u)
+	if len(got) != 1 || got[0].Value != "b c" || !got[0].Quoted {
+		t.Fatalf("host-only and domain cookie with the same name must replace each other and keep Quoted: %+v", got)
+	}
+}

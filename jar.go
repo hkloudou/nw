@@ -82,7 +82,7 @@ func (j *Jar) Cookies(u *url.URL) []*http.Cookie {
 		return cmp.Or(len(b.Path)-len(a.Path), strings.Compare(a.Name, b.Name))
 	})
 	for i, c := range out {
-		out[i] = &http.Cookie{Name: c.Name, Value: c.Value}
+		out[i] = &http.Cookie{Name: c.Name, Value: c.Value, Quoted: c.Quoted}
 	}
 	return out
 }
@@ -145,7 +145,9 @@ func (j *Jar) Load(path string) error {
 	return json.Unmarshal(b, j)
 }
 
-func key(c *http.Cookie) string { return c.Domain + ";" + c.Path + ";" + c.Name }
+// key identifies a cookie by domain, path and name (RFC 6265 §5.3 step 11); a
+// host-only cookie and a domain cookie for the same host replace each other.
+func key(c *http.Cookie) string { return strings.TrimPrefix(c.Domain, ".") + ";" + c.Path + ";" + c.Name }
 
 func hostname(u *url.URL) string { return strings.ToLower(strings.TrimSuffix(u.Hostname(), ".")) }
 
