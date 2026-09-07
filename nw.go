@@ -1,200 +1,173 @@
+// Package nw is a small HTTP client scaffold for API and scraping work:
+// one Client, a JSON-serialisable cookie Jar, and plain (value, error) data flow.
 package nw
 
-// func X[T any](site string, fc func(response *http.Response) *Result[T]) {
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+)
 
-// }
+// UserAgent is the default User-Agent header sent by New().
+const UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
-// func PostJsonSteam[T any](opts ...NwOption) *res[T] {
-// 	o := getDefaultOption(opts...)
+// Option mutates a request before it is sent. Client-level options (Use)
+// run first, then per-call options, so per-call options win.
+type Option func(*http.Request)
 
-// 	req, err := http.NewRequest("POST", o.site, o.postReader)
-// 	if err != nil {
-// 		return &res[T]{
-// 			Code: 400,
-// 			Msg:  err.Error(),
-// 			Data: nil,
-// 		}
-// 	}
+// Header sets a request header.
+func Header(key, value string) Option {
+	return func(r *http.Request) { r.Header.Set(key, value) }
+}
 
-// 	fill(o, req)
-// 	resp, err := o.client.Do(req)
-// 	if err != nil {
-// 		return &res[T]{
-// 			Code: 400,
-// 			Msg:  err.Error(),
-// 			Data: nil,
-// 		}
-// 	}
-// 	defer resp.Body.Close()
+// Query sets a URL query parameter.
+func Query(key, value string) Option {
+	return func(r *http.Request) {
+		q := r.URL.Query()
+		q.Set(key, value)
+		r.URL.RawQuery = q.Encode()
+	}
+}
 
-// 	return returnStream[T](resp.Body, o)
-// }
+// Client wraps an *http.Client with a persistent Jar and default Options.
+type Client struct {
+	HTTP  *http.Client
+	Jar   *Jar
+	Debug bool // log every request and response body to the standard logger
+	opts  []Option
+}
 
-// func PostJsonData[T any](data interface{}, opts ...NwOption) *res[T] {
-// 	b, err := json.Marshal(data)
-// 	if err != nil {
-// 		return &res[T]{
-// 			Code: 400,
-// 			Msg:  err.Error(),
-// 			Data: nil,
-// 		}
-// 	}
-// 	opts = append(opts, WithPostData(bytes.NewReader(b)))
-// 	return PostJsonSteam[T](opts...)
-// }
+// New returns a Client with an empty Jar, a 60s timeout and a browser User-Agent.
+func New() *Client {
+	jar := &Jar{}
+	c := &Client{HTTP: &http.Client{Jar: jar, Timeout: 60 * time.Second}, Jar: jar}
+	return c.Use(Header("User-Agent", UserAgent))
+}
 
-// func fill(o *nwOption, req *http.Request) {
-// 	req.Header.Set("Content-Type", "application/json")
-// 	if o.header != nil {
-// 		req.Header = o.header
-// 	}
+// Use adds Options applied to every request. Call it during setup, not concurrently with Do.
+func (c *Client) Use(opts ...Option) *Client {
+	c.opts = append(c.opts, opts...)
+	return c
+}
 
-// 	for i := 0; i < len(o.mid.reqs); i++ {
-// 		o.mid.reqs[i](req)
-// 	}
-// }
+// Proxy routes all traffic through proxyURL. An empty string restores the
+// default behaviour (HTTP_PROXY / HTTPS_PROXY from the environment).
+func (c *Client) Proxy(proxyURL string) error {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	if proxyURL != "" {
+		u, err := url.Parse(proxyURL)
+		if err != nil {
+			return err
+		}
+		t.Proxy = http.ProxyURL(u)
+	}
+	c.HTTP.Transport = t
+	return nil
+}
 
-// type res[T any] struct {
-// 	Code int
-// 	Msg  string
-// 	Data *T
-// }
+// Get sends a GET request.
+func (c *Client) Get(ctx context.Context, rawURL string, opts ...Option) (*Response, error) {
+	return c.Send(ctx, http.MethodGet, rawURL, nil, opts...)
+}
 
-// func GetJsonData[T any](opts ...NwOption) *res[T] {
-// 	o := getDefaultOption(opts...)
-// 	req, err := http.NewRequest("GET", o.site, nil)
-// 	if err != nil {
-// 		return &res[T]{
-// 			Code: 400,
-// 			Msg:  err.Error(),
-// 			Data: nil,
-// 		}
-// 	}
-// 	fill(o, req)
+// PostJSON sends body as application/json. A string or []byte body is sent
+// as-is; anything else goes through json.Marshal.
+func (c *Client) PostJSON(ctx context.Context, rawURL string, body any, opts ...Option) (*Response, error) {
+	var b []byte
+	switch v := body.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	default:
+		var err error
+		if b, err = json.Marshal(v); err != nil {
+			return nil, err
+		}
+	}
+	opts = append([]Option{Header("Content-Type", "application/json")}, opts...)
+	return c.Send(ctx, http.MethodPost, rawURL, bytes.NewReader(b), opts...)
+}
 
-// 	resp, err := o.client.Do(req)
-// 	if err != nil {
-// 		return &res[T]{
-// 			Code: 400,
-// 			Msg:  err.Error(),
-// 			Data: nil,
-// 		}
-// 	}
-// 	defer resp.Body.Close()
+// PostForm sends form as application/x-www-form-urlencoded.
+func (c *Client) PostForm(ctx context.Context, rawURL string, form url.Values, opts ...Option) (*Response, error) {
+	opts = append([]Option{Header("Content-Type", "application/x-www-form-urlencoded")}, opts...)
+	return c.Send(ctx, http.MethodPost, rawURL, strings.NewReader(form.Encode()), opts...)
+}
 
-// 	for i := 0; i < len(o.mid.ress); i++ {
-// 		o.mid.ress[i](resp)
-// 	}
+// Send builds a request with any method and body and passes it to Do.
+func (c *Client) Send(ctx context.Context, method, rawURL string, body io.Reader, opts ...Option) (*Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, rawURL, body)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req, opts...)
+}
 
-// 	if resp != nil && resp.StatusCode != 200 {
-// 		return &res[T]{
-// 			Code: 400,
-// 			Msg:  fmt.Sprintf("err response code:%d", resp.StatusCode),
-// 			Data: nil,
-// 		}
-// 		// return nil, fmt.Errorf("err response code:%d", resp.StatusCode)
-// 	}
-// 	return returnStream[T](resp.Body, o)
-// }
+// Do applies the Options, sends req and reads the whole body.
+//
+// A transport failure returns (nil, err). A status >= 400 returns the
+// Response together with a *StatusError, so the body is still inspectable.
+func (c *Client) Do(req *http.Request, opts ...Option) (*Response, error) {
+	for _, o := range c.opts {
+		o(req)
+	}
+	for _, o := range opts {
+		o(req)
+	}
+	start := time.Now()
+	r, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	if c.Debug {
+		log.Printf("nw: %s %s -> %d (%s)\n%s", req.Method, req.URL, r.StatusCode, time.Since(start).Round(time.Millisecond), body)
+	}
+	resp := &Response{Response: r, Body: body}
+	if r.StatusCode >= 400 {
+		return resp, &StatusError{resp}
+	}
+	return resp, nil
+}
 
-// func returnStream[T any](stream io.ReadCloser, o *nwOption) *res[T] {
-// 	body, err := io.ReadAll(stream)
-// 	if err != nil {
-// 		return &res[T]{
-// 			Code: 400,
-// 			Msg:  err.Error(),
-// 			Data: nil,
-// 		}
-// 	}
-// 	if o.log {
-// 		fmt.Println("resposne", o.site, string(body))
-// 	}
+// Response is a fully-read HTTP response.
+type Response struct {
+	*http.Response
+	Body []byte
+}
 
-// 	g := gjson.ParseBytes(body)
-// 	sg := func(keys ...string) gjson.Result {
-// 		for i := 0; i < len(keys); i++ {
-// 			if keys[i] == "" {
-// 				if g.Exists() {
-// 					return g
-// 				}
-// 			}
-// 			r := g.Get(keys[i])
-// 			if r.Exists() {
-// 				return r
-// 			}
-// 			if i == len(keys)-1 {
-// 				return r
-// 			}
-// 		}
-// 		panic("")
-// 	}
-// 	// if sg(o.codeKeys...).Int() != 0 {
-// 	// 	msg := sg(o.msgKeys...).String()
-// 	// 	if len(msg) > 0 {
-// 	// 		return nil, fmt.Errorf(msg)
-// 	// 	}
-// 	// 	return nil, fmt.Errorf("error fmt")
-// 	// }
+// String returns the body as text.
+func (r *Response) String() string { return string(r.Body) }
 
-// 	code := sg(o.codeKeys...).Int()
-// 	msg := sg(o.msgKeys...).String()
+// JSON decodes the body into v.
+func (r *Response) JSON(v any) error { return json.Unmarshal(r.Body, v) }
 
-// 	var dataRaw = sg(o.dataKeys...).Raw
-// 	var obj T
-// 	if reflect.TypeOf(obj).String() == "gjson.Result" {
-// 		if result, ok := interface{}(gjson.Parse(dataRaw)).(T); ok {
-// 			return &res[T]{
-// 				Code: int(code),
-// 				Msg:  msg,
-// 				Data: &result,
-// 			}
-// 		}
-// 		return &res[T]{
-// 			Code: 500,
-// 			Msg:  "error fmt",
-// 			Data: nil,
-// 		}
-// 	}
+// StatusError is returned by Do for responses with status >= 400.
+type StatusError struct{ *Response }
 
-// 	if reflect.TypeOf(obj).Kind() == reflect.Slice {
-// 		reflect.ValueOf(&obj).Elem().Set(reflect.MakeSlice(reflect.TypeOf(obj), 0, 0))
-// 	}
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("nw: %s %s: %s", e.Request.Method, e.Request.URL, e.Status)
+}
 
-// 	err = json.Unmarshal([]byte(dataRaw), &obj)
-// 	if err != nil {
-// 		return &res[T]{
-// 			Code: 500,
-// 			Msg:  "error fmt",
-// 			Data: nil,
-// 		}
-// 	}
-// 	return &res[T]{
-// 		Code: int(code),
-// 		Msg:  msg,
-// 		Data: &obj,
-// 	}
-// }
-
-// func returnJson[T any](stream io.ReadCloser, o *nwOption) *Result[T] {
-// 	body, err := io.ReadAll(stream)
-// 	if err != nil {
-// 		// return w
-// 		return &res[T]{Code: 400, Msg: err.Error()}
-// 	}
-
-// 	if o.log {
-// 		fmt.Println("response", o.site, string(body))
-// 	}
-
-// 	var obj T
-// 	switch reflect.TypeOf(obj).Kind() {
-// 	case reflect.Struct, reflect.Slice:
-// 		if err := json.Unmarshal(body, &obj); err != nil {
-// 			return &res[T]{Code: 500, Msg: "JSON unmarshal failed: " + err.Error()}
-// 		}
-// 	default:
-// 		return &res[T]{Code: 500, Msg: "Unsupported type"}
-// 	}
-
-// 	return &res[T]{Code: 200, Msg: "", Data: &obj}
-// }
+// JSON decodes a (Response, error) pair straight into a T:
+//
+//	user, err := nw.JSON[User](c.Get(ctx, url))
+func JSON[T any](r *Response, err error) (T, error) {
+	var v T
+	if err != nil {
+		return v, err
+	}
+	return v, r.JSON(&v)
+}
